@@ -1,0 +1,463 @@
+<html>
+<head>
+	<title>FHIR DART</title>
+	<link rel="stylesheet" href="css/bootstrap.css">
+	<link rel="stylesheet" href="css/bootstrap-theme.min.css">
+	<script src="js/clone.js"></script>
+	<script src="js/jquery-2.1.3.min.js"></script>
+	<script src="js/bootstrap.min.js"></script>
+	<script src="js/d3.v3.min.js"></script>
+	<script src="js/d3-tip.js"></script>
+	<script src="js/histogram.js"></script>
+	<script src="js/encounter_subcharts.js"></script>
+	<script src="js/provider_subcharts.js"></script>
+	<script src="js/provider_compare.js"></script>
+	<script src="js/markov.js"></script>
+	<script src="js/bars.js"></script>
+	<script src="js/donutChart.js"></script>
+	<script src="js/bubble_chart.js"></script>
+	<script src="data/providerIdNameMap.js"></script>
+	<script type="text/javascript">
+		var activeCondition = "";
+		
+		//console.log(providerIdNameMap["111094519"])
+
+    	var allEncounters = (function() {
+        var json = null;
+        $.ajax({
+            'async': false,
+            'global': false,
+            'url': "data/encounters.json",
+            'dataType': "json",
+            'success': function (data) {
+                json = data;
+            }
+        });
+        return json;
+    	})();
+
+    	var encounterHistoryData = (function() {
+        var json = null;
+        $.ajax({
+            'async': false,
+            'global': false,
+            'url': "data/encounterHistory.json",
+            'dataType': "json",
+            'success': function (data) {
+                json = data;
+            }
+        });
+        return json;
+    	})();
+
+
+    	var filteredEncounterData = [];
+    	var filteredChoronologicalVisData = [];
+    	var filteredEncounterDataByCondition = [];
+    	var filteredMemberDataByCondition = [];
+	</script>
+</head>
+<style>
+
+body {
+    padding-top: 50px; /* Required padding for .navbar-fixed-top. Remove if using .navbar-static-top. Change if height of navigation changes. */
+}
+
+.link {
+  fill: none;
+  stroke: black;
+  stroke-width: 1.5px;
+}
+
+circle {
+  fill: #ccc;  
+}
+
+/*
+.barz rect {
+  fill: #3366CC;
+  shape-rendering: crispEdges;  
+}
+
+.barz text {
+  fill: #fff;
+}
+
+.bar text {
+  fill: #029eca;
+}
+
+.axis text {
+	font: 10px sans-serif;
+}
+.axis path, .axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+  text-color:white;
+  size: 10px;
+}
+.x-axis path, .x-axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+  text-color:white;
+}
+*/
+.discreteBar {
+	fill:#1f77b4;
+}
+
+.d3-tip {
+  line-height: 1;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  border-radius: 2px;
+  font: 12px sans-serif;
+  font-weight: bold;
+}
+
+/* Creates a small triangle extender for the tooltip */
+.d3-tip:after {
+  box-sizing: border-box;
+  display: inline;
+  font-size: 10px;
+  width: 100%;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.8);
+  content: "\25BC";
+  position: absolute;
+  text-align: center;
+}
+
+/* Style northward tooltips differently */
+.d3-tip.n:after {
+  margin: -1px 0 0 0;
+  top: 100%;
+  left: 0;
+}
+.bubble{
+cursor:pointer;
+}
+</style>
+<link rel="stylesheet" type="text/css" href="css/nv.d3.css">
+<script type="text/javascript" src="js/nv.d3.min.js"></script>
+<body style="background-color:#F8F8F5;">
+    <nav class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+        
+            <div class="navbar-header">
+				<a class="navbar-brand" href="#" style="color:#C8C8C8;margin-left:80px;"><b>FHIR DART</b></a>
+            </div>
+            
+            <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+				<a class="navbar-brand" href="#" style="margin-left:100px;" onclick="toggleView(1)"><b>Condition-level</b></a>
+				<a class="navbar-brand" href="#" style="margin-left:50px" onclick="toggleView(2)"><b>Cohort-level</b></a>
+				<!--<a class="navbar-brand" href="#" style="margin-left:50px" onclick="toggleView(3)"><b>Provider-comparison</b></a>-->
+			</div>
+            
+    </nav>
+
+		<div class="col-sm-2">
+			<div class="panel-group" id="accordion" role="tablist" aria-multiselectable="true">
+			  <div class="panel panel-default">
+				<div class="panel-heading" role="tab" id="headingOne">
+				  <h4 class="panel-title">
+					<a data-toggle="collapse" href="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+					  Age range
+					</a>
+				  </h4>
+				</div>
+				<div id="collapseOne" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingOne">
+				  <div class="panel-body">
+					From: <select onchange="applyFilters()" style="margin-left:10px;margin-right:10px;" id="agerangestart"></select>
+					To: <select onchange="applyFilters()" style="margin-left:10px;" id="agerangeend"></select>
+				  </div>
+				</div>
+			  </div>
+			  <div class="panel panel-default">
+				<div class="panel-heading" role="tab" id="headingTwo">
+				  <h4 class="panel-title">
+					<a class="collapsed" data-toggle="collapse"  href="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+					  Gender
+					</a>
+				  </h4>
+				</div>
+				<div id="collapseTwo" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingTwo">
+				  <div class="panel-body">
+					<input onchange="applyFilters()" checked="true" type="checkbox" id="genderboth" value="both">Both</input>
+					<input onchange="applyFilters()" type="checkbox" id="gendermale" value="male">Male</input>
+					<input onchange="applyFilters()" type="checkbox" id="genderfemale" value="female">Female</input>
+				  </div>
+				</div>
+			  </div>
+			  <div class="panel panel-default">
+				<div class="panel-heading" role="tab" id="headingThree">
+				  <h4 class="panel-title">
+					<a class="collapsed" data-toggle="collapse"  href="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+					  Year Range
+					</a>
+				  </h4>
+				</div>
+				<div id="collapseThree" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingThree">
+				  <div class="panel-body">
+					From: <select onchange="applyFilters()" style="margin-left:10px;margin-right:10px;" id="daterangestart"></select>
+					To: <select onchange="applyFilters()" style="margin-left:10px;" id="daterangeend"></select>
+				  </div>
+				</div>
+			  </div>
+			  <div class="panel panel-default">
+				<div class="panel-heading" role="tab" id="headingFour">
+				  <h4 class="panel-title">
+					<a class="collapsed" data-toggle="collapse"  href="#collapseFour" aria-expanded="false" aria-controls="collapseFour">
+					  Marriage Status
+					</a>
+				  </h4>
+				</div>
+				<div id="collapseFour" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingFour">
+				  <div class="panel-body" id="marriagestatusoptionlist">		        
+				  </div>
+				</div>
+			  </div>
+			  <div class="panel panel-default">
+				<div class="panel-heading" role="tab" id="headingFive">
+				  <h4 class="panel-title">
+					<a class="collapsed" data-toggle="collapse"  href="#collapseFive" aria-expanded="false" aria-controls="collapseFive">
+					  Job
+					</a>
+				  </h4>
+				</div>
+				<div id="collapseFive" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingFive">
+				  <div class="panel-body" id="joboptionlist">
+					
+				  </div>
+				</div>
+			  </div>
+			  <div class="panel panel-default">
+				<div class="panel-heading" role="tab" id="headingSix">
+				  <h4 class="panel-title">
+					<a class="collapsed" data-toggle="collapse"  href="#collapseSix" aria-expanded="false" aria-controls="collapseSix">
+					  Immunizations
+					</a>
+				  </h4>
+				</div>
+				<div id="collapseSix" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingSix">
+				  <div class="panel-body" id="immunizationoptionlist">
+					
+				  </div>
+				</div>
+			  </div>
+			</div>
+		</div>
+		
+		<div id="encounterLevel">
+			<div class="col-sm-8">	
+
+					<div style="height:10px">
+						<div id="encountercounttext" style="float:left;"></div>
+						<div id="membercounttext" style="float:right;"></div>
+					</div>
+
+					<div style="height:600px;margin-left:35%" id="bubblechart"></div>			
+
+					<div style="height:10%;">
+						<div class="selected-bubble" style="float:left;"></div>
+						<div class="patients-in-condition-cohort" style="float:right;"></div>					
+					</div>
+					<!--<nav class="navbar navbar-default">
+					  <div class="container-fluid">
+						<div class="navbar-header">
+							<h2>Encounter-Level</h2>
+						</div>
+					  </div>
+					</nav>-->
+					<div id="encounterlevel_sub">
+					<hr/>
+					<h2> Cohort-level Statistics</h2>
+					<hr/>
+					<div id="subcharts-encounter" style="height:30%">		
+						<div id="drugbarchart" style="float:left;width:33%">
+							<h4 align="center">Drugs ordered</h4>			
+							<svg></svg>			
+						</div>
+						<div id="labtestbarchart" style="float:left;width:33%">
+							<h4 align="center">Lab tests</h4>
+							<svg></svg>		
+						</div>
+						<div id="visitypedonutchart"style="float:right;width:33%">
+							<h4 align="center">Visit types distribution</h4>
+							<svg></svg>	
+						</div>
+					</div>
+					<!--<nav class="navbar navbar-default">
+					  <div class="container-fluid">
+						<div class="navbar-header">
+							<h2>Provider-Level</h2>
+						</div>
+					  </div>
+					</nav>-->
+					<hr/>
+					<h2> Provider-level Statistics</h2>
+					<hr/>
+					<div id="subcharts-provider" style="height:30%">					
+						<div id="providertotallabtestbar" style="float:left;width:33%;">
+							<h4 align="center">Lab tests ordered</h4>			
+							<svg></svg>
+						</div>
+						<div id="providerconsultationbar" style="float:left;width:33%">
+							<h4 align="center">Consultations ordered</h4>			
+							<svg></svg>
+						</div>
+						<div id="providertotalmedicationbar" style="float:left;width:33%">
+							<h4 align="center">Medications prescribed</h4>			
+							<svg></svg>
+						</div>
+						<div style="float:left;width:33%;">
+							<h4 align="center">Lab test distribution</h4>
+							<h4 align="center">Provider selected: <span id="providerlabdetailsname"></span></h4>
+						</div>
+						<div style="float:left;width:33%">
+							<h4 align="center">Requested consultations distribution</h4>
+							<h4 align="center">Provider selected: <span id="providerconsultationdetailsname"></span></h4>
+						</div>
+						<div style="float:left;width:33%">
+							<h4 align="center">Drugs ordered distribution</h4>
+							<h4 align="center">Provider selected: <span id="providermedicationdetailsname"></span></h4>
+						</div>
+
+						<div id="providerlabdetailsdonut" style="float:left;width:33%;">
+							<svg></svg>
+						</div>
+						<div id="providerconsultationdetailsdonut" style="float:left;width:33%">
+							<svg></svg>
+						</div>
+						<div id="providermedicationdetailsdonut" style="float:left;width:33%">
+							<svg></svg>
+						</div>					
+					</div>
+					<hr/>
+					<h2> Careflow-level Statistics</h2>
+					<hr/>
+					<div id="careflow_filtered" style="height:30%">					
+						<div id="markovvis1"></div>
+					</div>			
+					</div>
+			</div>
+		</div>
+		<div id="careflowlevel" class="hide">
+			<div class="col-sm-8">
+				<div id="careflowlevel1">
+					<h3>Careflow process for cohort</h3>
+					<div id="markovviz" style="height:50%;width:80%;float:left;">
+					</div>	
+				</div>
+				<div id="careflowlevel2"  style="float:left;">
+					<h3>Compare providers(accumulated values across all encounters)</h3>
+					<select id="provider1"></select><select id="provider2"></select><button onclick="compareProviders()">Compare Providers</button>
+					<div id="providerencountercompare" style="width:900px;float:left;height:400px;">
+						<svg></svg>
+					</div>	
+				</div>
+			</div>
+		</div> <!-- </div> already existing...  -->
+	
+</body>
+<script type="text/javascript" src="js/filterFunction.js"></script>
+<script type="text/javascript">
+	function toggleView(selectedView){		
+		if(selectedView==1){
+			$("#encounterLevel").removeClass("hide");
+			$("#encounterLevel").addClass("show");
+			
+			$("#careflowlevel").removeClass("show");
+			$("#careflowlevel").addClass("hide");
+			/*
+			$("#providerlevel").removeClass("show");
+			$("#providerlevel").addClass("hide");			*/
+		}else if(selectedView==2){
+			$("#encounterLevel").removeClass("show");
+			$("#encounterLevel").addClass("hide");
+
+			$("#careflowlevel").removeClass("hide");
+			$("#careflowlevel").addClass("show");
+			/*
+			$("#providerlevel").removeClass("show");
+			$("#providerlevel").addClass("hide");			*/
+		}else if(selectedView==3){
+		/*
+			$("#encounterLevel").removeClass("show");
+			$("#encounterLevel").addClass("hide");
+
+			$("#careflowlevel").removeClass("show");
+			$("#careflowlevel").addClass("hide");			
+
+			$("#providerlevel").removeClass("hide");
+			$("#providerlevel").addClass("show");		
+		*/
+		}
+			
+	}
+	var allProviders = [];
+	for(var i=0;i<allEncounters.length;i++){
+		allProviders.push(allEncounters[i].providerId)
+	}
+	allProviders = unique(allProviders);
+	$("#provider1").append("<option></option>");
+	$("#provider2").append("<option></option>");
+	for(var i=0;i<allProviders.length;i++){
+		$("#provider1").append("<option value="+allProviders[i]+">"+providerIdNameMap[allProviders[i]]+"</option>");
+		$("#provider2").append("<option value="+allProviders[i]+">"+providerIdNameMap[allProviders[i]]+"</option>");
+	}
+
+	function unique(list) {
+	    var result = [];
+	    $.each(list, function(i, e) {
+	        if ($.inArray(e, result) == -1) result.push(e);
+	    });
+    	return result;
+	}
+	$( document ).ready(function() {
+		for(var i=2005;i<2014;i++){
+		  $("#daterangestart").append('<option value="'+i+'">'+i+'</option>');
+		}
+		$("#daterangeend").append('<option value="'+2014+'">'+2014+'</option>');
+		for(var i=2013;i>=2005;i--){
+		  $("#daterangeend").append('<option value="'+i+'">'+i+'</option>');
+		}
+		for(var i=1;i<100;i++){
+		  $("#agerangestart").append('<option value="'+i+'">'+i+'</option>');
+		}
+		$("#agerangeend").append('<option value="'+100+'">'+100+'</option>');
+		for(var i=99;i>=1;i--){
+		  $("#agerangeend").append('<option value="'+i+'">'+i+'</option>');
+		}
+		//$('#checkboxes').append('<input type="checkbox" /> ' + text + '<br />');	optArray=unique(optArray.sort());	
+		var tempJobsArr = [],tempImmunizationsArr = [], tempMarStatusArr = [];
+		for(var i=0;i<allEncounters.length;i++){
+			tempJobsArr.push(allEncounters[i]['job']);
+			tempMarStatusArr.push(allEncounters[i]['marriage_status']);
+			for(var j=0;j<allEncounters[i]['immunizations'].length;j++){
+				tempImmunizationsArr.push(allEncounters[i]['immunizations'][j]);
+			}
+		}
+		tempJobsArr = unique(tempJobsArr.sort());
+		tempMarStatusArr = unique(tempMarStatusArr.sort());
+		tempImmunizationsArr = unique(tempImmunizationsArr.sort())
+
+		for(var i=0;i<tempJobsArr.length;i++){
+			$('#joboptionlist').append('<input onchange="applyFilters();" checked="checked" type="checkbox" value="'+tempJobsArr[i]+'" /> ' + tempJobsArr[i] + '<br />');
+		}
+
+		for(var i=0;i<tempMarStatusArr.length;i++){
+			$('#marriagestatusoptionlist').append('<input onchange="applyFilters();" checked="checked" type="checkbox" value="'+tempMarStatusArr[i]+'" /> ' + tempMarStatusArr[i] + '<br />');
+		}
+
+		for(var i=0;i<tempImmunizationsArr.length;i++){
+			$('#immunizationoptionlist').append('<input onchange="applyFilters();" type="checkbox" value="'+tempImmunizationsArr[i]+'" /> ' + tempImmunizationsArr[i] + '<br />');
+		}
+
+		applyFilters();
+    	//console.log("ready!");
+	});
+</script>
+</html>

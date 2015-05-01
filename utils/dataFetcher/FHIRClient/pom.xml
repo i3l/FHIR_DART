@@ -1,0 +1,91 @@
+<!--
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.mycompany</groupId>
+    <artifactId>FHIRClient</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>1.7</maven.compiler.source>
+        <maven.compiler.target>1.7</maven.compiler.target>
+    </properties>
+    <dependencies>
+     <dependency>
+        <groupId>ca.uhn.hapi.fhir</groupId>
+        <artifactId>hapi-fhir-base</artifactId>
+        <version>0.9</version>
+     </dependency>
+     <dependency>
+        <groupId>ca.uhn.hapi.fhir</groupId>
+        <artifactId>hapi-fhir-structures-dstu</artifactId>
+        <version>0.9</version>
+     </dependency>
+    <dependency>
+        <groupId>com.phloc</groupId>
+        <artifactId>phloc-schematron</artifactId>
+        <version>2.7.1</version>
+    </dependency>
+    <dependency>
+        <groupId>com.phloc</groupId>
+        <artifactId>phloc-commons</artifactId>
+        <version>4.3.6</version>
+    </dependency>
+    </dependencies>
+</project>
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<modelVersion>4.0.0</modelVersion>
+<groupId>TestApp</groupId>
+<artifactId>TestApp</artifactId>
+<version>0.0.1-SNAPSHOT</version>
+<name>TestingClientApps</name>
+<dependencies>
+<!-- This dependency includes the core HAPI-FHIR classes -->
+<dependency>
+<groupId>ca.uhn.hapi.fhir</groupId>
+<artifactId>hapi-fhir-base</artifactId>
+<version>0.8</version>
+    <type>jar</type>
+</dependency>
+<dependency>
+    <groupId>javax</groupId>
+    <artifactId>javaee-api</artifactId>
+    <version>7.0</version>
+</dependency>
+<!-- At least one "structures" JAR must also be included -->
+<dependency>
+<groupId>ca.uhn.hapi.fhir</groupId>
+<artifactId>hapi-fhir-structures-dstu</artifactId>
+<version>0.8</version>
+    <type>jar</type>
+</dependency>
+<dependency>
+<groupId>log4j</groupId>
+<artifactId>log4j</artifactId>
+<version>1.2.14</version>
+</dependency>
+<dependency>
+    <groupId>com.googlecode.json-simple</groupId>
+    <artifactId>json-simple</artifactId>
+    <version>1.1.1</version>
+</dependency>
+</dependencies>
+<!--
+<build>
+<sourceDirectory>src</sourceDirectory>
+<plugins>
+<plugin>
+<artifactId>maven-compiler-plugin</artifactId>
+<version>3.1</version>
+<configuration>
+<source>1.7</source>
+<target>1.7</target>
+</configuration>
+</plugin>
+</plugins>
+</build>
+-->
+</project>
