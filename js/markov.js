@@ -1,4 +1,4 @@
-function drawMarkov(companynodes,companylinks,nodelist,location){
+function drawMarkov(inpNodes,inpLinks,nodelist,location){
 if(location==1){
   d3.select("#markovvis1").selectAll("svg").remove();  
 }else if(location==2){
@@ -22,9 +22,9 @@ function getProbability(source,target){
   }
 }
 
-var links = companylinks;
+var links = inpLinks;
 console.log(links)
-var nodes = companynodes;
+var nodes = inpNodes;
 
 links.forEach(function(link) {
   link.source = nodes[link.source] || (nodes[link.source] = {name: link.source});
